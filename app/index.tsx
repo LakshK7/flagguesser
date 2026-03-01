@@ -30,7 +30,7 @@ export default function StartScreen() {
             <Text style={styles.buttonText}>Flag Mode 🇮🇳</Text>
           </LinearGradient>
         </Pressable>
-        <Pressable
+        {/* <Pressable
           style={({ pressed }) => [
             styles.button,
             pressed && styles.buttonPressed,
@@ -43,7 +43,7 @@ export default function StartScreen() {
           >
             <Text style={styles.buttonText}>Riddle Mode 💭</Text>
           </LinearGradient>
-        </Pressable>
+        </Pressable> */}
       </View>
     </LinearGradient>
   );
