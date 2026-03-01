@@ -1,7 +1,15 @@
-import { StyleSheet, View } from "react-native";
+import { Platform, StyleSheet, Text, View } from "react-native";
 import { WebView } from "react-native-webview";
 
 export default function Globe() {
+  if (Platform.OS === "web") {
+    return (
+      <View style={styles.container}>
+        <Text style={styles.emoji}>🌍</Text>
+      </View>
+    );
+  }
+
   const html = `
     <!DOCTYPE html>
     <html>
@@ -118,9 +126,14 @@ const styles = StyleSheet.create({
   container: {
     width: 280,
     height: 280,
+    alignItems: "center",
+    justifyContent: "center",
   },
   webview: {
     flex: 1,
     backgroundColor: "transparent",
+  },
+  emoji: {
+    fontSize: 120,
   },
 });

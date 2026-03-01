@@ -6,6 +6,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Animated,
   Image,
+  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -16,7 +17,8 @@ import {
 function getRandomCountries(
   correct: Country,
   count: number,
-  pool: Country[]
+  pool: Country[],
+  usedCodes: Set<string>
 ): Country[] {
   const filtered = pool.filter((c) => c.code !== correct.code);
   const shuffled = filtered.sort(() => Math.random() - 0.5);
@@ -32,7 +34,9 @@ export default function GameScreen() {
   const [bestStreak, setBestStreak] = useState(0);
   const [gameOver, setGameOver] = useState(false);
   const [selected, setSelected] = useState<string | null>(null);
+  const [showModal, setShowModal] = useState(false);
   const fadeAnim = useRef(new Animated.Value(0)).current;
+  const usedCodes = useRef<Set<string>>(new Set());
 
   const loadBestStreak = async () => {
     const stored = await AsyncStorage.getItem("bestStreak");
@@ -46,9 +50,17 @@ export default function GameScreen() {
   const loadRound = useCallback((currentStreak: number = 0) => {
     try {
       const pool = getCountryPoolByStreak(currentStreak);
-      const randomIndex = Math.floor(Math.random() * pool.length);
-      const correct = pool[randomIndex];
-      const roundOptions = getRandomCountries(correct, 2, pool);
+      const availablePool = pool.filter((c) => !usedCodes.current.has(c.code));
+      const poolToUse = availablePool.length >= 3 ? availablePool : pool;
+      const randomIndex = Math.floor(Math.random() * poolToUse.length);
+      const correct = poolToUse[randomIndex];
+      usedCodes.current.add(correct.code);
+      const roundOptions = getRandomCountries(
+        correct,
+        2,
+        pool,
+        usedCodes.current
+      );
       setCurrentCountry(correct);
       setOptions(roundOptions);
       setSelected(null);
@@ -82,8 +94,20 @@ export default function GameScreen() {
       }
       setTimeout(() => loadRound(newStreak), 800);
     } else {
-      setGameOver(true);
+      setTimeout(() => setShowModal(true), 600);
     }
+  };
+
+  const handleModalContinue = () => {
+    setShowModal(false);
+    setGameOver(true);
+  };
+
+  const handleTryAgain = () => {
+    usedCodes.current = new Set();
+    setStreak(0);
+    setGameOver(false);
+    loadRound(0);
   };
 
   if (gameOver) {
@@ -104,11 +128,7 @@ export default function GameScreen() {
               styles.button,
               pressed && styles.buttonPressed,
             ]}
-            onPress={() => {
-              setStreak(0);
-              setGameOver(false);
-              loadRound(0);
-            }}
+            onPress={handleTryAgain}
           >
             <LinearGradient
               colors={["#e94560", "#c23152"]}
@@ -197,6 +217,50 @@ export default function GameScreen() {
           })}
         </View>
       </ScrollView>
+
+      {/* Wrong Answer Modal */}
+      <Modal
+        visible={showModal}
+        transparent
+        animationType="fade"
+        onRequestClose={handleModalContinue}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalEmoji}>❌</Text>
+            <Text style={styles.modalTitle}>Wrong!</Text>
+            <Text style={styles.modalSubtitle}>The correct answer was</Text>
+            <Text style={styles.modalCountryName}>{currentCountry?.name}</Text>
+
+            {currentCountry && (
+              <View style={styles.modalFlagContainer}>
+                <Image
+                  source={{
+                    uri: `https://flagcdn.com/w320/${currentCountry.code}.png`,
+                  }}
+                  style={styles.modalFlag}
+                  resizeMode="contain"
+                />
+              </View>
+            )}
+
+            <Pressable
+              style={({ pressed }) => [
+                styles.button,
+                pressed && styles.buttonPressed,
+              ]}
+              onPress={handleModalContinue}
+            >
+              <LinearGradient
+                colors={["#e94560", "#c23152"]}
+                style={styles.buttonGradient}
+              >
+                <Text style={styles.buttonText}>See Results</Text>
+              </LinearGradient>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
     </LinearGradient>
   );
 }
@@ -248,7 +312,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     overflow: "hidden",
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 8 },
+    shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.5,
     shadowRadius: 20,
     elevation: 15,
@@ -329,5 +393,56 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     color: "#e94560",
     marginVertical: 10,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.75)",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 20,
+  },
+  modalCard: {
+    backgroundColor: "#16213e",
+    borderRadius: 24,
+    padding: 30,
+    alignItems: "center",
+    width: "100%",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 20 },
+    shadowOpacity: 0.5,
+    shadowRadius: 30,
+    elevation: 20,
+  },
+  modalEmoji: {
+    fontSize: 50,
+    marginBottom: 10,
+  },
+  modalTitle: {
+    fontSize: 32,
+    fontWeight: "bold",
+    color: "#e74c3c",
+    marginBottom: 8,
+  },
+  modalSubtitle: {
+    fontSize: 16,
+    color: "#a8b2d8",
+    marginBottom: 8,
+  },
+  modalCountryName: {
+    fontSize: 24,
+    fontWeight: "bold",
+    color: "#ffffff",
+    marginBottom: 20,
+  },
+  modalFlagContainer: {
+    width: 280,
+    height: 160,
+    borderRadius: 12,
+    overflow: "hidden",
+    marginBottom: 10,
+  },
+  modalFlag: {
+    width: "100%",
+    height: "100%",
   },
 });
