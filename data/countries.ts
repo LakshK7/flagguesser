@@ -1,4 +1,7 @@
-const allCountries = require("world-countries");
+const raw = require("world-countries");
+const allCountries = Array.isArray(raw)
+  ? raw
+  : raw.default ?? Object.values(raw);
 
 export type Country = {
   name: string;
@@ -7,14 +10,12 @@ export type Country = {
 };
 
 export const countries: Country[] = allCountries
-  .filter((c: any) => c.flag && c.cca2) // removed population check
+  .filter((c: any) => c.flag && c.cca2)
   .map((c: any) => ({
     name: c.name.common,
     code: c.cca2.toLowerCase(),
-    population: c.population ?? 0, // default to 0 if missing
+    population: c.population ?? 0,
   }));
-
-console.log("Processed countries length:", countries.length);
 
 export function getCountryPoolByStreak(streak: number): Country[] {
   const sorted = [...countries].sort((a, b) => b.population - a.population);
